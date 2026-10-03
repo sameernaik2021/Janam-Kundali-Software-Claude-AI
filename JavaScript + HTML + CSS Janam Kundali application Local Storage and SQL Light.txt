@@ -1,0 +1,861 @@
+Yes. If your goal is a **JavaScript + HTML + CSS Janam Kundali application that works primarily on the user's device**, with **browser storage + SQLite**, I would recommend a **local-first layered architecture**.
+
+ One important technical point: a normal browser cannot simply open an arbitrary `.sqlite` file using JavaScript. To use SQLite in a browser, you generally need a **WebAssembly (WASM) SQLite implementation** or a browser-supported SQLite library. `localStorage`/`IndexedDB` can complement SQLite rather than replacing it.
+
+ ## Recommended architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    PRESENTATION LAYER                       │
+│                                                             │
+│             HTML + CSS + JavaScript                         │
+│                                                             │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────┐  │
+│  │ Birth    │ │ Kundali  │ │ Planet   │ │ Dasha /      │  │
+│  │ Details  │ │ Chart    │ │ Details  │ │ Divisional   │  │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────────┘  │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    APPLICATION LAYER                        │
+│                                                             │
+│  KundaliService                                             │
+│  ├── generateKundali()                                      │
+│  ├── calculateChart()                                       │
+│  ├── calculateDasha()                                       │
+│  ├── calculateDivisionalCharts()                            │
+│  └── generateReport()                                       │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│                     DOMAIN LAYER                            │
+│                                                             │
+│ BirthData │ Planet │ Rashi │ Bhava │ Nakshatra │ Dasha     │
+│ Lagna     │ Yoga   │ Divisional Charts │ CalculationRules  │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│                  CALCULATION ENGINE                         │
+│                                                             │
+│ Date/Time → Julian Day → Planet Positions → Ayanamsa        │
+│                    ↓                                        │
+│             Sidereal Positions                              │
+│                    ↓                                        │
+│        Lagna / Houses / Nakshatra                            │
+│                    ↓                                        │
+│        Dasha / Vargas / Other calculations                   │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    DATA ACCESS LAYER                         │
+│                                                             │
+│             StorageRepository                                │
+│                     │                                        │
+│          ┌──────────┴──────────┐                             │
+│          ↓                     ↓                             │
+│   Browser Storage           SQLite                           │
+│   localStorage              WASM SQLite                       │
+│   sessionStorage            Indexed SQLite                    │
+│          │                     │                             │
+│          └──────────┬──────────┘                             │
+│                     ↓                                        │
+│                Local Device                                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+ # 1\. Use a Local-First architecture
+
+ For your requirements, I would make the application **local-first**.
+
+ That means:
+
+```
+User
+ ↓
+HTML/CSS/JavaScript
+ ↓
+Calculate locally
+ ↓
+Save locally
+ ↓
+Display locally
+```
+
+ No server is required for the basic Kundali functionality.
+
+ This gives you:
+
+ - Offline operation
+- Better privacy
+- Fast response
+- No backend hosting cost
+- No dependency on an internet connection
+- User-controlled local data
+
+---
+
+ # 2\. Suggested project structure
+
+ I would organize the project like this:
+
+```
+janam-kundali/
+│
+├── index.html
+│
+├── css/
+│   ├── main.css
+│   ├── forms.css
+│   ├── kundali-chart.css
+│   ├── responsive.css
+│   └── print.css
+│
+├── js/
+│   ├── app.js
+│   │
+│   ├── config/
+│   │   ├── settings.js
+│   │   └── constants.js
+│   │
+│   ├── domain/
+│   │   ├── BirthData.js
+│   │   ├── Planet.js
+│   │   ├── Rashi.js
+│   │   ├── Bhava.js
+│   │   ├── Nakshatra.js
+│   │   ├── Dasha.js
+│   │   └── Kundali.js
+│   │
+│   ├── calculations/
+│   │   ├── julianDay.js
+│   │   ├── planets.js
+│   │   ├── ayanamsa.js
+│   │   ├── ascendant.js
+│   │   ├── houses.js
+│   │   ├── nakshatra.js
+│   │   ├── dasha.js
+│   │   └── divisionalCharts.js
+│   │
+│   ├── services/
+│   │   ├── KundaliService.js
+│   │   ├── ChartService.js
+│   │   ├── DashaService.js
+│   │   └── ReportService.js
+│   │
+│   ├── storage/
+│   │   ├── SQLiteDatabase.js
+│   │   ├── LocalStorageRepository.js
+│   │   ├── SettingsRepository.js
+│   │   └── KundaliRepository.js
+│   │
+│   ├── ui/
+│   │   ├── BirthForm.js
+│   │   ├── KundaliChart.js
+│   │   ├── PlanetTable.js
+│   │   ├── DashaView.js
+│   │   ├── DivisionalChart.js
+│   │   └── ErrorMessage.js
+│   │
+│   └── utils/
+│       ├── dateUtils.js
+│       ├── formatUtils.js
+│       └── validation.js
+│
+├── data/
+│   └── static/
+│
+└── lib/
+    └── sqlite/
+```
+
+ The important thing is that **UI code should never directly perform astronomical calculations or SQL queries**.
+
+---
+
+ # 3\. Separate calculation from UI
+
+ This is probably the most important architectural decision.
+
+ Don't do this:
+
+```
+button.onclick = function () {
+    // calculate planets
+    // calculate houses
+    // calculate nakshatra
+    // calculate dasha
+    // execute SQL
+    // update HTML
+};
+```
+
+ Instead:
+
+```
+HTML
+ ↓
+UI Controller
+ ↓
+KundaliService
+ ↓
+Calculation Engine
+ ↓
+KundaliResult
+ ↓
+UI Renderer
+```
+
+ For example:
+
+```
+const kundali = await KundaliService.generate({
+    dateOfBirth,
+    timeOfBirth,
+    latitude,
+    longitude,
+    timezone
+});
+
+KundaliChart.render(kundali);
+PlanetTable.render(kundali.planets);
+DashaView.render(kundali.dashas);
+```
+
+ This makes your application considerably easier to maintain.
+
+---
+
+ # 4\. Calculation engine
+
+ Your calculation engine should be completely independent of HTML.
+
+ For example:
+
+```
+calculations/
+│
+├── julianDay.js
+├── planets.js
+├── ayanamsa.js
+├── ascendant.js
+├── houses.js
+├── nakshatra.js
+├── dasha.js
+└── divisionalCharts.js
+```
+
+ The pipeline can be:
+
+```
+Birth Date + Time + Location
+             ↓
+       Normalize Time
+             ↓
+         Julian Day
+             ↓
+     Planetary Positions
+             ↓
+          Ayanamsa
+             ↓
+     Sidereal Positions
+             ↓
+           Lagna
+             ↓
+           Bhavas
+             ↓
+         Nakshatras
+             ↓
+     Divisional Charts
+             ↓
+           Dashas
+             ↓
+       KundaliResult
+```
+
+---
+
+ # 5\. Keep astronomical calculations separate from Vedic rules
+
+ I strongly recommend this distinction.
+
+ ### Astronomical layer
+
+ Answers:
+
+ > Where was the Sun/Moon/Mars/etc. at this time and location?
+
+ ### Vedic calculation layer
+
+ Answers:
+
+ > Given those positions, what are the Rashi, Nakshatra, Bhava, Dasha, Vargas, etc. according to the selected rules?
+
+ So:
+
+```
+Astronomical Engine
+       ↓
+Planetary Positions
+       ↓
+Vedic Astrology Rules
+       ↓
+Kundali
+```
+
+ This allows you to change an astrology rule without modifying the underlying astronomical calculations.
+
+---
+
+ # 6\. SQLite architecture
+
+ For a browser application, use a **WASM-based SQLite implementation**.
+
+ Conceptually:
+
+```
+JavaScript
+    ↓
+SQLite API
+    ↓
+SQLite WASM
+    ↓
+SQLite Database
+```
+
+ Your application should not scatter SQL queries throughout the UI.
+
+ Instead create:
+
+```
+KundaliRepository
+```
+
+ For example:
+
+```
+await KundaliRepository.save(kundali);
+
+const kundalis =
+    await KundaliRepository.getAll();
+
+const kundali =
+    await KundaliRepository.getById(id);
+```
+
+ Internally, the repository handles SQL.
+
+---
+
+ # 7\. Suggested SQLite schema
+
+ A reasonable starting schema would be:
+
+```
+CREATE TABLE kundalis (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    birth_date TEXT NOT NULL,
+    birth_time TEXT NOT NULL,
+    latitude REAL NOT NULL,
+    longitude REAL NOT NULL,
+    timezone TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    calculation_version TEXT NOT NULL
+);
+```
+
+ Then:
+
+```
+CREATE TABLE planetary_positions (
+    id INTEGER PRIMARY KEY,
+    kundali_id TEXT NOT NULL,
+    planet TEXT NOT NULL,
+    longitude REAL NOT NULL,
+    latitude REAL,
+    speed REAL,
+    retrograde INTEGER,
+    rashi TEXT,
+    house INTEGER,
+    nakshatra TEXT,
+    pada INTEGER,
+    FOREIGN KEY (kundali_id)
+        REFERENCES kundalis(id)
+);
+```
+
+ And:
+
+```
+CREATE TABLE dasha_periods (
+    id INTEGER PRIMARY KEY,
+    kundali_id TEXT NOT NULL,
+    planet TEXT NOT NULL,
+    level INTEGER NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    FOREIGN KEY (kundali_id)
+        REFERENCES kundalis(id)
+);
+```
+
+ You could add tables for:
+
+```
+houses
+nakshatras
+divisional_charts
+yogas
+reports
+```
+
+ as the application grows.
+
+---
+
+ # 8\. What should go into localStorage?
+
+ Don't use `localStorage` as your primary database.
+
+ Use it for **small preferences and application state**.
+
+ Good examples:
+
+```
+{
+  "theme": "dark",
+  "language": "en",
+  "chartStyle": "north-indian",
+  "ayanamsa": "selected-setting",
+  "lastKundaliId": "abc123"
+}
+```
+
+ So:
+
+```
+localStorage
+    ↓
+Settings / Preferences
+```
+
+ while:
+
+```
+SQLite
+    ↓
+Kundalis
+Birth Data
+Planetary Data
+Dasha
+Charts
+Reports
+```
+
+ This separation is much cleaner.
+
+---
+
+ # 9\. What about IndexedDB?
+
+ For a browser application, I'd actually consider using **IndexedDB as the persistence layer for the SQLite database file**.
+
+ Conceptually:
+
+```
+                 Application
+                      │
+             ┌────────┴────────┐
+             ↓                 ↓
+        localStorage       SQLite WASM
+        Preferences            │
+                               ↓
+                           DB File
+                               │
+                               ↓
+                           IndexedDB
+```
+
+ This gives you:
+
+ - SQLite query capabilities
+- Browser persistence
+- Offline operation
+- Structured storage
+
+ The exact persistence mechanism depends on the SQLite WASM implementation you select.
+
+---
+
+ # 10\. Don't store calculated data unnecessarily
+
+ You have two possible approaches.
+
+ ### Option A — Calculate every time
+
+```
+Birth Data
+   ↓
+Calculation
+   ↓
+Kundali
+```
+
+ Advantages:
+
+ - Less database storage
+- Always generated from source data
+
+ ### Option B — Calculate and cache
+
+```
+Birth Data
+   ↓
+Calculation
+   ↓
+Kundali
+   ↓
+SQLite
+```
+
+ Next time:
+
+```
+SQLite
+   ↓
+Existing Kundali
+```
+
+ For your application, I'd use **Option B**, but include a:
+
+```
+calculation_version
+```
+
+ For example:
+
+```
+calculation_version = "1.0.0"
+```
+
+ If you improve your calculation engine later:
+
+```
+1.0.0 → 1.1.0
+```
+
+ you can identify older calculated charts and regenerate them.
+
+---
+
+ # 11\. Use a single Kundali result object
+
+ All calculation modules should eventually produce a consistent object.
+
+ For example:
+
+```
+{
+    birthData: {
+        date: "...",
+        time: "...",
+        latitude: 18.52,
+        longitude: 73.85,
+        timezone: "Asia/Kolkata"
+    },
+
+    settings: {
+        ayanamsa: "...",
+        houseSystem: "..."
+    },
+
+    ascendant: {
+        sign: "...",
+        degree: 12.34
+    },
+
+    planets: [],
+
+    houses: [],
+
+    nakshatra: {},
+
+    dashas: [],
+
+    divisionalCharts: {}
+}
+```
+
+ Then every UI component consumes this same structure.
+
+---
+
+ # 12\. UI architecture
+
+ Your HTML can have separate areas:
+
+```
+<main>
+
+    <section id="birth-details">
+        <!-- Birth form -->
+    </section>
+
+    <section id="kundali-chart">
+        <!-- Chart -->
+    </section>
+
+    <section id="planetary-details">
+        <!-- Planet table -->
+    </section>
+
+    <section id="nakshatra">
+        <!-- Nakshatra -->
+    </section>
+
+    <section id="dasha">
+        <!-- Dasha -->
+    </section>
+
+    <section id="divisional-charts">
+        <!-- D1, D9, etc. -->
+    </section>
+
+</main>
+```
+
+ JavaScript controls these components.
+
+---
+
+ # 13\. Recommended application flow
+
+```
+                    START
+                      │
+                      ↓
+              Enter Birth Details
+                      │
+                      ↓
+               Validate Input
+                      │
+                      ↓
+              Normalize Date/Time
+                      │
+                      ↓
+              Generate Kundali
+                      │
+                      ↓
+             Calculation Engine
+                      │
+          ┌───────────┼───────────┐
+          ↓           ↓           ↓
+       Planets      Lagna       Houses
+          │           │           │
+          └───────────┼───────────┘
+                      ↓
+                 Nakshatras
+                      ↓
+                    Dasha
+                      ↓
+             Divisional Charts
+                      ↓
+                KundaliResult
+                      │
+            ┌─────────┴─────────┐
+            ↓                   ↓
+        Display UI          Save SQLite
+                                │
+                                ↓
+                       Local Browser Storage
+```
+
+---
+
+ # 14\. Offline-first behavior
+
+ This architecture allows the application to work like:
+
+```
+                 INTERNET
+                    │
+            ┌───────┴───────┐
+            │               │
+        Not required     Optional
+            │               │
+            ↓               ↓
+       Local App       Updates / Data
+            │
+            ↓
+     JavaScript Engine
+            │
+            ↓
+          SQLite
+```
+
+ You can even make it a **PWA (Progressive Web App)** so users can install it on their phone/desktop and use it offline.
+
+---
+
+ # 15\. Security and privacy
+
+ For a local-first Kundali application, this is a major advantage.
+
+ Birth information can remain on the user's device:
+
+```
+User
+ ↓
+Browser
+ ↓
+SQLite
+ ↓
+User's device
+```
+
+ rather than:
+
+```
+User
+ ↓
+Internet
+ ↓
+Your server
+ ↓
+Database
+```
+
+ You should still protect the local application against common web security problems such as XSS, unsafe HTML insertion, and malicious imported data.
+
+ Also, don't put sensitive birth information into URLs unnecessarily.
+
+---
+
+ # 16\. Testing strategy
+
+ The **calculation engine needs the strongest testing**.
+
+ For example:
+
+```
+tests/
+├── calculations/
+│   ├── julianDay.test.js
+│   ├── planets.test.js
+│   ├── ascendant.test.js
+│   ├── houses.test.js
+│   ├── nakshatra.test.js
+│   └── dasha.test.js
+│
+├── storage/
+│   └── kundaliRepository.test.js
+│
+└── ui/
+    └── kundaliChart.test.js
+```
+
+ Maintain a set of **reference birth charts** and verify that your implementation produces the expected results under explicitly documented settings.
+
+ That is particularly important because small differences in:
+
+ - time conversion
+- coordinates
+- ephemeris
+- ayanamsa
+- house calculation
+- rounding
+
+ can produce different chart results.
+
+---
+
+ # 17\. Final recommended architecture
+
+ For your exact requirements, I'd use:
+
+```
+┌───────────────────────────────────────────────┐
+│              HTML + CSS                       │
+│          User Interface / Charts              │
+└───────────────────────┬───────────────────────┘
+                        ↓
+┌───────────────────────────────────────────────┐
+│           JavaScript UI Layer                 │
+│       Controllers + Components + State        │
+└───────────────────────┬───────────────────────┘
+                        ↓
+┌───────────────────────────────────────────────┐
+│             Application Layer                 │
+│             KundaliService                    │
+└───────────────────────┬───────────────────────┘
+                        ↓
+┌───────────────────────────────────────────────┐
+│               Domain Layer                    │
+│ Planet / Rashi / Bhava / Dasha / Nakshatra   │
+└───────────────────────┬───────────────────────┘
+                        ↓
+┌───────────────────────────────────────────────┐
+│          Astronomical Calculation             │
+│       Engine + Vedic Calculation Rules        │
+└───────────────────────┬───────────────────────┘
+                        ↓
+┌───────────────────────────────────────────────┐
+│              Repository Layer                 │
+│         KundaliRepository / Settings          │
+└──────────────┬────────────────┬───────────────┘
+               ↓                ↓
+        ┌─────────────┐   ┌──────────────┐
+        │   SQLite    │   │ localStorage │
+        │   (WASM)    │   │ Preferences  │
+        └──────┬──────┘   └──────────────┘
+               ↓
+        IndexedDB/file
+        browser persistence
+```
+
+ ### Technology choice
+
+ | Requirement | Recommended |
+| --- | --- |
+| UI | HTML5 |
+| Styling | CSS3 |
+| Application | Modern JavaScript (ES Modules) |
+| Architecture | Layered + modular |
+| Storage | SQLite WASM |
+| SQLite persistence | IndexedDB/browser storage |
+| Preferences | localStorage |
+| Offline | Service Worker + PWA |
+| Charts | SVG or Canvas |
+| Heavy calculations | Web Worker |
+| Testing | Vitest/Jest + browser E2E testing |
+| Deployment | Static hosting |
+| Backend | **Not required initially** |
+
+### One key recommendation
+
+ **Don't make SQLite, localStorage, UI, and calculations one big JavaScript application.**
+
+ Keep these boundaries:
+
+```
+HTML/CSS
+   ↓
+UI
+   ↓
+Services
+   ↓
+Domain
+   ↓
+Calculation Engine
+   ↓
+Repository
+   ↓
+SQLite / Browser Storage
+```
+
+ That architecture is particularly suitable for a **privacy-focused, offline Janam Kundali application** and leaves room to add features such as **D1/D9 charts, Vimshottari Dasha, Panchanga, saved profiles, PDF printing, multiple chart styles, search, and chart comparison** without having to redesign the core system.

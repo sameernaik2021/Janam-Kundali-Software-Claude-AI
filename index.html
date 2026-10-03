@@ -1,0 +1,163 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Janam Kundali – Vedic Birth Chart</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#faf5ea;--fg:#2a1d14;--mut:#7a6858;--card:#fffdf7;--line:#d8c9ae;--acc:#b8431b;--acc2:#2f5d62;--hi:#f3dfb4}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17120e;--fg:#f0e6d4;--mut:#a39382;--card:#221a14;--line:#4a3b2d;--acc:#f08a5d;--acc2:#7fc0c4;--hi:#3d2e1c}}
+:root[data-theme="dark"]{--bg:#17120e;--fg:#f0e6d4;--mut:#a39382;--card:#221a14;--line:#4a3b2d;--acc:#f08a5d;--acc2:#7fc0c4;--hi:#3d2e1c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 Georgia,'Iowan Old Style',serif}
+main{max-width:1100px;margin:0 auto;padding:16px}h1{font-size:1.9rem;margin:.2em 0}h2{font-size:1.1rem;margin:0 0 .6em;color:var(--acc)}
+.sub{color:var(--mut);margin:0 0 14px}.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}.two{display:grid;gap:14px;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+@media(max-width:760px){.two{grid-template-columns:1fr}}
+label{display:block;font-size:.85rem;color:var(--mut)}input,select,button{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+button{cursor:pointer;width:auto}button.p{background:var(--acc);color:#fff;border-color:var(--acc)}button.on{background:var(--hi);border-color:var(--acc)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}.stat b{display:block;font-size:1.15rem}.stat span{color:var(--mut);font-size:.82rem}
+.sc{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:.9rem}th,td{padding:5px 8px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{color:var(--mut);font-weight:600}
+svg text{fill:var(--fg);font-family:Georgia,serif}.ch polygon,.ch rect{fill:var(--card);stroke:var(--fg);stroke-width:1.5;cursor:pointer}.ch .lg{fill:var(--hi)}.ch polygon:hover,.ch rect:hover{fill:var(--hi)}
+.ch .pl{cursor:pointer;font-weight:700;font-size:14px}.ch .sn{font-size:11px;fill:var(--mut)}
+.tl{display:flex;height:46px;border:1px solid var(--line);border-radius:6px;overflow:hidden}.tl button{border:0;border-right:1px solid var(--line);border-radius:0;padding:0;font-size:.75rem;background:var(--hi)}.tl button.cur{background:var(--acc);color:#fff}.tl button.sel{outline:3px solid var(--acc2);outline-offset:-3px}
+.err{color:#c0262d;margin:8px 0}.ok{color:#2b8a3e}.bad{color:#c0262d}.note{font-size:.82rem;color:var(--mut)}
+</style></head><body><main>
+<h1>Janam Kundali</h1><p class="sub">Vedic birth chart · Lahiri ayanāṃśa · whole-sign houses · Vimshottari daśā · runs entirely on your device</p>
+<section class="card"><h2>Birth details</h2><div class="grid">
+<label>Name<input id="nm" maxlength="60" placeholder="Optional"></label>
+<label>Date of birth<input id="dt" type="date" value="1990-05-15"></label>
+<label>Time of birth (local)<input id="tm" type="time" step="60" value="10:30"></label>
+<label>Place<select id="pl"></select></label>
+<label>Latitude (°N)<input id="la" type="number" step="any" value="18.5204"></label>
+<label>Longitude (°E)<input id="lo" type="number" step="any" value="73.8567"></label>
+<label>Time zone (IANA)<input id="tz" value="Asia/Kolkata" list="tzl"></label></div>
+<datalist id="tzl"><option>Asia/Kolkata<option>Asia/Kathmandu<option>Asia/Dhaka<option>Asia/Colombo<option>Europe/London<option>America/New_York<option>America/Los_Angeles<option>Asia/Dubai<option>Australia/Sydney</datalist>
+<div class="row"><button class="p" id="go">Calculate Kundali</button><button id="sv">Save profile</button></div><div id="er" class="err" role="alert"></div>
+<p class="note">Historical zone/DST rules come from your browser's IANA database. Verify the zone for pre-1970 births.</p></section>
+<div id="out" hidden>
+<section class="card"><div class="grid" id="sum"></div></section>
+<section class="card"><div class="row" style="margin:0 0 8px"><span id="sty"></span><span id="vg"></span></div>
+<div class="two"><div id="chart"></div><div><h2 id="dh">Details</h2><div id="dd">Tap a house or a graha in the chart.</div></div></div></section>
+<section class="card sc"><h2>Graha positions (D1, sidereal)</h2><table id="pt"></table></section>
+<section class="card"><h2>Vimshottari daśā</h2><div class="tl" id="tl"></div><p class="note" id="dn"></p><div class="sc"><table id="ad"></table></div></section>
+</div>
+<section class="card"><h2>Saved profiles</h2><div id="sl" class="note">None yet.</div></section>
+<section class="card"><h2>Self-test</h2><div id="ts" class="note"></div></section>
+<p class="note">This computes astronomical positions and applies traditional Jyotiṣa rules. Interpretations of such charts have no established scientific predictive validity; don't base medical, financial or legal decisions on them. Accuracy: planets ≈ 0.02°, Moon ≈ 0.01°, mean nodes, mean ayanāṃśa, no nutation/aberration.</p>
+</main><script>
+/* ===== Calculation engine (no DOM). Mean-equinox sidereal, Lahiri, whole-sign. ===== */
+const R=Math.PI/180,n360=x=>((x%360)+360)%360,CALC_VERSION='1.0.0';
+const SIGNS=['Mesha','Vrishabha','Mithuna','Karka','Simha','Kanya','Tula','Vrishchika','Dhanu','Makara','Kumbha','Meena'];
+const SIGN_EN=['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+const SIGN_LORD=['Ma','Ve','Me','Mo','Su','Me','Ve','Ma','Ju','Sa','Sa','Ju'];
+const NAK=['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','P.Phalguni','U.Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','P.Ashadha','U.Ashadha','Shravana','Dhanishta','Shatabhisha','P.Bhadrapada','U.Bhadrapada','Revati'];
+const PN={Su:'Sun',Mo:'Moon',Ma:'Mars',Me:'Mercury',Ju:'Jupiter',Ve:'Venus',Sa:'Saturn',Ra:'Rahu',Ke:'Ketu'};
+const ORDER=['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me'],YRS={Ke:7,Ve:20,Su:6,Mo:10,Ma:7,Ra:18,Ju:16,Sa:19,Me:17};
+const EXALT={Su:0,Mo:1,Ma:9,Me:5,Ju:3,Ve:11,Sa:6},OWN={Su:[4],Mo:[3],Ma:[0,7],Me:[2,5],Ju:[8,11],Ve:[1,6],Sa:[9,10]};
+const YEAR_MS=365.25*864e5;
+// JPL approximate Keplerian elements 1800-2050 [a,da,e,de,I,dI,L,dL,peri,dperi,node,dnode]
+const EL={Me:[.38709927,.00000037,.20563593,.00001906,7.00497902,-.00594749,252.2503235,149472.67411175,77.45779628,.16047689,48.33076593,-.12534081],
+Ve:[.72333566,.0000039,.00677672,-.00004107,3.39467605,-.0007889,181.9790995,58517.81538729,131.60246718,.00268329,76.67984255,-.27769418],
+Ea:[1.00000261,.00000562,.01671123,-.00004392,-.00001531,-.01294668,100.46457166,35999.37244981,102.93768193,.32327364,0,0],
+Ma:[1.52371034,.00001847,.0933941,.00007882,1.84969142,-.00813131,-4.55343205,19140.30268499,-23.94362959,.44441088,49.55953891,-.29257343],
+Ju:[5.202887,-.00011607,.04838624,-.00013253,1.30439695,-.00183714,34.39644051,3034.74612775,14.72847983,.21252668,100.47390909,.20469106],
+Sa:[9.53667594,-.0012506,.05386179,-.00050991,2.48599187,.00193609,49.95424423,1222.49362201,92.59887831,-.41897216,113.66242448,-.28867794]};
+function julian(y,m,d,h){if(m<=2){y--;m+=12}const A=Math.floor(y/100),B=2-A+Math.floor(A/4);return Math.floor(365.25*(y+4716))+Math.floor(30.6001*(m+1))+d+B-1524.5+h/24}
+function deltaT(y){if(y>=2005&&y<2050){const t=y-2000;return 62.92+.32217*t+.005589*t*t}if(y>=1986&&y<2005){const t=y-2000;return 63.86+.3345*t-.060374*t*t+.0017275*t**3}const u=(y-1820)/100;return -20+32*u*u}
+function precession(T){return 1.396888943*T+.00030706*T*T}
+function ayanamsa(T){return 23.857092+precession(T)} // Lahiri (mean), degrees
+function helio(k,T){const e=EL[k],v=i=>e[i]+e[i+1]*T,a=v(0),ec=v(2),I=v(4)*R,L=v(6),w=v(8),O=v(10)*R;
+ const M=n360(L-w)*R,om=(w-v(10))*R;let E=M+ec*Math.sin(M);for(let i=0;i<30;i++)E-=(E-ec*Math.sin(E)-M)/(1-ec*Math.cos(E));
+ const x=a*(Math.cos(E)-ec),y=a*Math.sqrt(1-ec*ec)*Math.sin(E),co=Math.cos(om),so=Math.sin(om),cO=Math.cos(O),sO=Math.sin(O),cI=Math.cos(I);
+ return[(co*cO-so*sO*cI)*x+(-so*cO-co*sO*cI)*y,(co*sO+so*cO*cI)*x+(-so*sO+co*cO*cI)*y]}
+const MT=[[0,0,1,0,6288774],[2,0,-1,0,1274027],[2,0,0,0,658314],[0,0,2,0,213618],[0,1,0,0,-185116],[0,0,0,2,-114332],[2,0,-2,0,58793],[2,-1,-1,0,57066],[2,0,1,0,53322],[2,-1,0,0,45758],[0,1,-1,0,-40923],[1,0,0,0,-34720],[0,1,1,0,-30383],[2,0,0,-2,15327],[0,0,1,2,-12528],[0,0,1,-2,10980],[4,0,-1,0,10675],[0,0,3,0,10034],[4,0,-2,0,8548],[2,1,-1,0,-7888],[2,1,0,0,-6766],[1,0,-1,0,-5163],[1,1,0,0,4987],[2,-1,1,0,4036],[2,0,2,0,3994],[4,0,0,0,3861],[2,0,-3,0,3665],[0,1,-2,0,-2689],[2,0,-1,2,-2602],[2,-1,-2,0,2390]];
+function moonTrop(T){const L=218.3164477+481267.88123421*T,D=(297.8501921+445267.1114034*T)*R,M=(357.5291092+35999.0502909*T)*R,P=(134.9633964+477198.8675055*T)*R,F=(93.272095+483202.0175233*T)*R,E=1-.002516*T;
+ let s=0;for(const[d,m,p,f,c]of MT)s+=c*Math.pow(E,Math.abs(m))*Math.sin(d*D+m*M+p*P+f*F);
+ const A1=(119.75+131.849*T)*R,A2=(53.09+479264.29*T)*R;s+=3958*Math.sin(A1)+1962*Math.sin(L*R-F)+318*Math.sin(A2);return n360(L+s/1e6)}
+function tropical(jd){const y=2000+(jd-2451545)/365.25,T=(jd+deltaT(y)/86400-2451545)/36525,[ex,ey]=helio('Ea',T),p=precession(T),o={};
+ o.Su=n360(Math.atan2(-ey,-ex)/R+p);o.Mo=moonTrop(T);
+ for(const k of['Me','Ve','Ma','Ju','Sa']){const[x,y2]=helio(k,T);o[k]=n360(Math.atan2(y2-ey,x-ex)/R+p)}
+ o.Ra=n360(125.0445479-1934.1362891*T+.0020754*T*T);o.Ke=n360(o.Ra+180);return{o,T}}
+const angDiff=(a,b)=>((a-b+540)%360)-180;
+function gmst(jd){const d=jd-2451545,T=d/36525;return n360(280.46061837+360.98564736629*d+.000387933*T*T-T*T*T/38710000)}
+function ascFromRamc(th,lat,eps){th*=R;lat*=R;eps*=R;return n360(Math.atan2(Math.cos(th),-(Math.sin(th)*Math.cos(eps)+Math.tan(lat)*Math.sin(eps)))/R)}
+function varga(lon,div){const s=Math.floor(lon/30)%12,d=lon%30,odd=s%2===0;
+ switch(div){case 1:return s;case 2:return(odd===(d<15))?4:3;case 3:return(s+4*Math.floor(d/10))%12;
+ case 7:return((odd?s:s+6)+Math.floor(d/(30/7)))%12;case 9:return Math.floor(lon*9/30)%12;
+ case 10:return((odd?s:s+8)+Math.floor(d/3))%12;case 12:return(s+Math.floor(d/2.5))%12}throw Error('varga')}
+function dignity(k,s){if(EXALT[k]===s)return'Exalted';if(k in EXALT&&(EXALT[k]+6)%12===s)return'Debilitated';if(OWN[k]&&OWN[k].includes(s))return'Own sign';return''}
+function tzOffsetMin(tz,y,mo,d,h,mi){const f=new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'numeric',day:'numeric',hour:'numeric',minute:'numeric'});
+ const off=u=>{const p={};f.formatToParts(new Date(u)).forEach(x=>p[x.type]=+x.value);return(Date.UTC(p.year,p.month-1,p.day,p.hour,p.minute)-u)/6e4};
+ const t=Date.UTC(y,mo-1,d,h,mi);let o=off(t);o=off(t-o*6e4);return o}
+function dashas(moon,birthMs){const nl=360/27,nk=Math.floor(moon/nl),lord=ORDER[nk%9],frac=(moon-nk*nl)/nl,i0=ORDER.indexOf(lord);
+ let start=birthMs-frac*YRS[lord]*YEAR_MS;const out=[];
+ for(let i=0;i<9;i++){const L=ORDER[(i0+i)%9],len=YRS[L]*YEAR_MS,sub=[];let s=start;
+  for(let j=0;j<9;j++){const S=ORDER[(i0+i+j)%9],l=len*YRS[S]/120;sub.push({lord:S,start:s,end:s+l});s+=l}
+  out.push({lord:L,start,end:start+len,sub});start+=len}
+ return{list:out,balanceYears:(1-frac)*YRS[lord],lord}}
+function compute(inp){const{y,mo,d,h,mi,lat,lon,tz}=inp,off=tzOffsetMin(tz,y,mo,d,h,mi),ms=Date.UTC(y,mo-1,d,h,mi)-off*6e4,jd=ms/864e5+2440587.5;
+ const{o,T}=tropical(jd),ay=ayanamsa(T),ey=2000+(jd-2451545)/365.25,jd2=jd+.05,t2=tropical(jd2),t1=tropical(jd-.05);
+ const eps=23.4392911-.0130042*T,ascT=ascFromRamc(gmst(jd)+lon,lat,eps),asc=n360(ascT-ay),ascSign=Math.floor(asc/30);
+ const planets=Object.keys(PN).map(k=>{const l=n360(o[k]-ay),sp=k==='Ra'||k==='Ke'?-.0530:angDiff(t2.o[k],t1.o[k])/.1,s=Math.floor(l/30),nl=360/27,nk=Math.floor(l/nl);
+  return{k,name:PN[k],lon:l,speed:sp,retro:k==='Ra'||k==='Ke'||sp<0&&k!=='Su'&&k!=='Mo',sign:s,deg:l%30,nak:nk,pada:Math.floor((l-nk*nl)/(nl/4))+1,house:(s-ascSign+12)%12+1,dig:dignity(k,s)}});
+ const mo_=planets[1],su=planets[0],tithi=Math.floor(n360(mo_.lon-su.lon)/12)+1;
+ return{inp,off,ms,jd,ayan:ay,asc,ascSign,ascNak:Math.floor(asc/(360/27)),planets,tithi,dasha:dashas(mo_.lon,ms),version:CALC_VERSION}}
+if(typeof module!=='undefined')module.exports={compute,julian,gmst,moonTrop,tropical,ascFromRamc,varga,dashas,ayanamsa,ORDER,YRS,n360,tzOffsetMin,SIGNS,NAK};
+/* ===== UI ===== */
+const $=id=>document.getElementById(id),NS='http://www.w3.org/2000/svg',AB={Su:'Su',Mo:'Mo',Ma:'Ma',Me:'Me',Ju:'Ju',Ve:'Ve',Sa:'Sa',Ra:'Ra',Ke:'Ke'};
+const CITY=[['Pune',18.5204,73.8567,'Asia/Kolkata'],['Mumbai',19.076,72.8777,'Asia/Kolkata'],['Delhi',28.6139,77.209,'Asia/Kolkata'],['Kolkata',22.5726,88.3639,'Asia/Kolkata'],['Chennai',13.0827,80.2707,'Asia/Kolkata'],['Bengaluru',12.9716,77.5946,'Asia/Kolkata'],['Hyderabad',17.385,78.4867,'Asia/Kolkata'],['Ahmedabad',23.0225,72.5714,'Asia/Kolkata'],['Varanasi',25.3176,82.9739,'Asia/Kolkata'],['London',51.5074,-.1278,'Europe/London'],['New York',40.7128,-74.006,'America/New_York'],['Custom…']];
+const BH=['self, body','wealth, speech','courage, siblings','home, mother','children, learning','service, disease','marriage, partners','longevity, change','dharma, fortune','career, status','gains, networks','expenses, moksha'];
+const VG=[[1,'D1 Rashi'],[2,'D2 Hora'],[3,'D3 Drekkana'],[7,'D7 Saptamsa'],[9,'D9 Navamsa'],[10,'D10 Dasamsa'],[12,'D12 Dvadasamsa']];
+const st={r:null,style:'north',vg:1,sel:null};
+CITY.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=c[0];$('pl').appendChild(o)});
+$('pl').onchange=()=>{const c=CITY[$('pl').value];if(c[1]!==undefined){$('la').value=c[1];$('lo').value=c[2];$('tz').value=c[3]}};
+const f2=n=>String(n).padStart(2,'0'),dms=d=>{let t=Math.round(d*3600),D=Math.floor(t/3600),M=Math.floor(t%3600/60);return D+'° '+f2(M)+'′ '+f2(t%60)+'″'};
+const fd=ms=>{const d=new Date(ms);return d.getUTCFullYear()+'-'+f2(d.getUTCMonth()+1)+'-'+f2(d.getUTCDate())},el=(t,a={},tx)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(tx!==undefined)e.textContent=tx;return e};
+function readInput(){const[y,mo,d]=$('dt').value.split('-').map(Number),[h,mi]=$('tm').value.split(':').map(Number),lat=parseFloat($('la').value),lon=parseFloat($('lo').value),tz=$('tz').value.trim();
+ if(!y||!h&&h!==0||isNaN(mi))throw Error('Enter a valid date and time.');if(y<1800||y>2100)throw Error('Year must be between 1800 and 2100.');
+ if(!(Math.abs(lat)<=66))throw Error('Latitude must be within ±66° (ascendant is unreliable near the poles).');if(!(Math.abs(lon)<=180))throw Error('Longitude must be within ±180°.');
+ try{new Intl.DateTimeFormat('en',{timeZone:tz})}catch(e){throw Error('Unknown time zone "'+tz+'". Use an IANA name like Asia/Kolkata.')}
+ return{y,mo,d,h,mi,lat,lon,tz,name:$('nm').value.trim()}}
+function run(){$('er').textContent='';try{st.r=compute(readInput());st.sel=null;$('out').hidden=false;render()}catch(e){$('er').textContent=e.message}}
+function layout(r){const s=varga(r.asc,st.vg),pls=r.planets.map(p=>({...p,vs:varga(p.lon,st.vg)}));pls.forEach(p=>p.vh=(p.vs-s+12)%12+1);return{s,pls}}
+function render(){const r=st.r,{s,pls}=layout(r),mo=r.planets[1],cur=r.dasha.list.find(x=>Date.now()>=x.start&&Date.now()<x.end);
+ $('sum').replaceChildren();[['Lagna',SIGNS[r.ascSign]+' '+dms(r.asc%30)],['Moon sign',SIGNS[mo.sign]+' ('+SIGN_EN[mo.sign]+')'],['Nakshatra',NAK[mo.nak]+' · pada '+mo.pada],['Tithi',(r.tithi>15?'Krishna ':'Shukla ')+(r.tithi>15?r.tithi-15:r.tithi)],['Current daśā',cur?PN[cur.lord]+' (to '+fd(cur.end)+')':'—'],['Ayanāṃśa',dms(r.ayan)+' Lahiri'],['UTC offset',(r.off>=0?'+':'−')+f2(Math.floor(Math.abs(r.off)/60))+':'+f2(Math.abs(r.off)%60)]].forEach(([k,v])=>{const d=document.createElement('div');d.className='stat';const b=document.createElement('b'),sp=document.createElement('span');b.textContent=v;sp.textContent=k;d.append(b,sp);$('sum').appendChild(d)});
+ const mk=(box,list,cur,fn)=>{box.replaceChildren();list.forEach(([v,t])=>{const b=document.createElement('button');b.textContent=t;b.className=v===cur?'on':'';b.onclick=()=>fn(v);box.appendChild(b)})};
+ mk($('sty'),[['north','North Indian'],['south','South Indian']],st.style,v=>{st.style=v;render()});mk($('vg'),VG,st.vg,v=>{st.vg=v;render()});
+ drawChart(s,pls);
+ const t=$('pt');t.replaceChildren();t.insertAdjacentHTML('beforeend','<tr><th>Graha<th>Rashi<th>Degree<th>Nakshatra · pada<th>Bhava<th>°/day<th>Status</tr>');
+ r.planets.forEach(p=>{const tr=t.insertRow();[p.name,SIGNS[p.sign],dms(p.deg),NAK[p.nak]+' · '+p.pada,p.house,p.speed.toFixed(3),[p.retro?'Retrograde':'',p.dig].filter(Boolean).join(', ')||'—'].forEach(v=>tr.insertCell().textContent=v);tr.onclick=()=>detail('p',p.k);tr.style.cursor='pointer'});
+ const asr=t.insertRow();['Lagna',SIGNS[r.ascSign],dms(r.asc%30),NAK[r.ascNak],1,'—','—'].forEach(v=>asr.insertCell().textContent=v);
+ drawDasha(cur);detail(st.sel?st.sel[0]:null,st.sel&&st.sel[1])}
+function drawChart(s,pls){const svg=el('svg',{viewBox:'0 0 400 400',class:'ch',role:'img','aria-label':'Kundali chart',width:'100%'}),H=Array.from({length:12},()=>[]);pls.forEach(p=>H[p.vh-1].push(p));
+ const sel=st.sel;const put=(g,cx,cy,hs,sg)=>{g.appendChild(el('text',{x:cx,y:cy-12,'text-anchor':'middle',class:'sn'},sg+1));let line=[],y=cy+4;const flush=()=>{if(!line.length)return;const t=el('text',{x:cx,y,'text-anchor':'middle'});line.forEach((p,i)=>{const sp=el('tspan',{class:'pl','data-k':p.k},AB[p.k]+(p.retro?'ᴿ':'')+(i<line.length-1?' ':''));sp.addEventListener('click',e=>{e.stopPropagation();detail('p',p.k)});t.appendChild(sp)});g.appendChild(t);y+=17;line=[]};hs.forEach(p=>{line.push(p);if(line.length===3)flush()});flush()};
+ if(st.style==='north'){const P={A:[0,0],B:[400,0],C:[400,400],D:[0,400],T:[200,0],R:[400,200],M:[200,400],L:[0,200],O:[200,200],a:[100,100],b:[300,100],c:[300,300],d:[100,300]},
+ Q=['a T b O','A T a','A a L','a O d L','L d D','D d M','d O c M','M c C','c R C','b R c O','B R b','T B b'].map(q=>q.split(' ').map(k=>P[k]));
+ Q.forEach((q,i)=>{const g=el('g'),pt=el('polygon',{points:q.map(p=>p.join(',')).join(' '),class:i===0?'lg':''});pt.addEventListener('click',()=>detail('h',i+1));g.appendChild(pt);
+  let cx=q.reduce((a,p)=>a+p[0],0)/q.length,cy=q.reduce((a,p)=>a+p[1],0)/q.length;if(i===0)cy-=8;put(g,cx,cy,H[i],(s+i)%12);svg.appendChild(g)})}
+ else{const POS=[[1,0],[2,0],[3,0],[3,1],[3,2],[3,3],[2,3],[1,3],[0,3],[0,2],[0,1],[0,0]];
+ POS.forEach(([c,r],sg)=>{const h=(sg-s+12)%12,g=el('g'),rc=el('rect',{x:c*100,y:r*100,width:100,height:100,class:h===0?'lg':''});rc.addEventListener('click',()=>detail('h',h+1));g.appendChild(rc);put(g,c*100+50,r*100+42,H[h],sg);if(h===0)g.appendChild(el('text',{x:c*100+6,y:r*100+94,class:'sn'},'Lagna'));svg.appendChild(g)});
+ svg.appendChild(el('text',{x:200,y:195,'text-anchor':'middle'},VG.find(v=>v[0]===st.vg)[1]))}
+ $('chart').replaceChildren(svg)}
+function detail(type,key){st.sel=type?[type,key]:null;const box=$('dd');box.replaceChildren();const add=(a,b)=>{const p=document.createElement('p');p.style.margin='0 0 4px';const s=document.createElement('b');s.textContent=a+': ';p.append(s,document.createTextNode(b));box.appendChild(p)};if(!type)return void(box.textContent='Tap a house or a graha in the chart.');
+ const r=st.r,{s,pls}=layout(r);
+ if(type==='p'){const p=pls.find(x=>x.k===key);$('dh').textContent=p.name;add('Rashi (D1)',SIGNS[p.sign]+' / '+SIGN_EN[p.sign]);add('Degree',dms(p.deg)+' (λ '+p.lon.toFixed(4)+'°)');add('Nakshatra',NAK[p.nak]+', pada '+p.pada+', lord '+PN[ORDER[p.nak%9]]);add('Bhava (D1)',p.house+' – '+BH[p.house-1]);if(st.vg!==1)add(VG.find(v=>v[0]===st.vg)[1],SIGNS[p.vs]+', house '+p.vh);add('Speed',p.speed.toFixed(4)+' °/day'+(p.retro?' (retrograde)':''));add('Dignity',p.dig||'Neutral / not classified');const ow=[];for(let i=0;i<12;i++)if(SIGN_LORD[(r.ascSign+i)%12]===key)ow.push(i+1);add('Rules houses',ow.join(', ')||'— (node)')}
+ else{const sg=(s+key-1)%12,here=pls.filter(p=>p.vh===key).map(p=>p.name);$('dh').textContent='House '+key;add('Sign',SIGNS[sg]+' / '+SIGN_EN[sg]);add('Lord',PN[SIGN_LORD[sg]]);add('Themes',BH[key-1]);add('Occupants',here.join(', ')||'empty');add('Type',[[1,4,7,10].includes(key)?'Kendra':'',[1,5,9].includes(key)?'Trikona':'',[6,8,12].includes(key)?'Dusthana':''].filter(Boolean).join(', ')||'—')}}
+function drawDasha(cur){const tl=$('tl'),D=r=>r.dasha.list;tl.replaceChildren();const L=D(st.r),tot=L[8].end-L[0].start;
+ L.forEach((m,i)=>{const b=document.createElement('button');b.style.flex=(m.end-m.start)/tot*100+' 1 0';b.textContent=AB[m.lord];b.title=PN[m.lord]+' '+fd(m.start)+' → '+fd(m.end);if(m===cur)b.className='cur';b.onclick=()=>sub(i);tl.appendChild(b)});sub(cur?L.indexOf(cur):0)}
+function sub(i){const m=st.r.dasha.list[i];[...$('tl').children].forEach((b,j)=>b.classList.toggle('sel',j===i));
+ $('dn').textContent=PN[m.lord]+' Mahadasha: '+fd(m.start)+' → '+fd(m.end)+(i===0?' (balance at birth '+st.r.dasha.balanceYears.toFixed(2)+' yr)':'');
+ const t=$('ad');t.replaceChildren();t.insertAdjacentHTML('beforeend','<tr><th>Antardasha<th>From<th>To</tr>');m.sub.forEach(a=>{const tr=t.insertRow();[PN[m.lord]+'–'+PN[a.lord],fd(a.start),fd(a.end)].forEach(v=>tr.insertCell().textContent=v);if(Date.now()>=a.start&&Date.now()<a.end)tr.style.background='var(--hi)'})}
+/* storage (localStorage; SQLite-WASM not loadable on this host) */
+const KEY='jk:v1';const load=()=>{try{return JSON.parse(localStorage.getItem(KEY))||[]}catch(e){return[]}};const save=a=>{try{localStorage.setItem(KEY,JSON.stringify(a))}catch(e){$('er').textContent='Storage unavailable in this browser.'}};
+function list(){const a=load(),b=$('sl');b.replaceChildren();if(!a.length)return void(b.textContent='None yet.');a.forEach((p,i)=>{const row=document.createElement('div');row.className='row';const l=document.createElement('button');l.textContent=(p.name||'Unnamed')+' · '+p.y+'-'+f2(p.mo)+'-'+f2(p.d);l.onclick=()=>{$('nm').value=p.name;$('dt').value=p.y+'-'+f2(p.mo)+'-'+f2(p.d);$('tm').value=f2(p.h)+':'+f2(p.mi);$('la').value=p.lat;$('lo').value=p.lon;$('tz').value=p.tz;run()};const x=document.createElement('button');x.textContent='Delete';x.onclick=()=>{a.splice(i,1);save(a);list()};row.append(l,x);b.appendChild(row)})}
+$('go').onclick=run;$('sv').onclick=()=>{try{const p=readInput(),a=load();a.push({...p,v:CALC_VERSION});save(a.slice(-50));list()}catch(e){$('er').textContent=e.message}};list();
+/* self-test */
+(function(){const T=[],ck=(n,ok,i)=>T.push([n,ok,i]);const near=(a,b,t)=>Math.abs(angDiff(a,b))<=t;
+ ck('Julian day J2000',julian(2000,1,1,12)===2451545);ck('GMST (Meeus 12.b)',near(gmst(2446896.30625),128.7378734,.001));
+ ck('Sun 1992-10-13 (Meeus 25.a)',near(tropical(2448908.5).o.Su,199.9099,.03));ck('Moon 1992-04-12 (Meeus 47.a)',near(moonTrop((2448724.5-2451545)/36525),133.1627,.03));
+ ck('Ascendant geometry',Math.abs(ascFromRamc(0,0,23.44)-90)<1e-9&&Math.abs(ascFromRamc(90,0,23.44)-180)<1e-9);
+ ck('Dasha years total 120',ORDER.reduce((a,k)=>a+YRS[k],0)===120);ck('Navamsa 0°→Mesha, 3°20′→Vrishabha, 359.99°→Meena',varga(0,9)===0&&varga(3.34,9)===1&&varga(359.99,9)===11);
+ const r=compute({y:2000,mo:1,d:1,h:12,mi:0,lat:0,lon:0,tz:'UTC'});ck('Sidereal Sun J2000 ≈ 256.52° (280.38−23.86)',near(r.planets[0].lon,256.52,.05));
+ ck('Dasha continuity & length',r.dasha.list.every((m,i,a)=>i===0||m.start===a[i-1].end)&&Math.abs((r.dasha.list[8].end-r.dasha.list[0].start)/YEAR_MS-120)<1e-9);
+ ck('Time zone Asia/Kolkata = +330 min',tzOffsetMin('Asia/Kolkata',1990,5,15,10,30)===330);
+ const b=$('ts');T.forEach(([n,ok])=>{const d=document.createElement('div');d.className=ok?'ok':'bad';d.textContent=(ok?'✔ ':'✘ ')+n;b.appendChild(d)})})();
+run();
+</script></body></html>
