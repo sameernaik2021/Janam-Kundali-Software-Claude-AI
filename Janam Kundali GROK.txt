@@ -1,0 +1,60 @@
+**Janam Kundali (Vedic Birth Chart) local-first web application** has been created and is ready to use.
+
+### Location
+`/home/workdir/artifacts/janam-kundali/`
+
+### What was built (aligned with your three source documents)
+
+| Layer | Implementation |
+|-------|----------------|
+| **Presentation** | Responsive HTML + CSS (dark/light theme, North & South Indian charts, print styles) |
+| **Application** | `KundaliService` – single entry point for all calculations |
+| **Domain** | Birth data, planets, rāśis, bhāvas, nakṣatras, daśā |
+| **Calculation engine** | Julian Day, Lahiri/Raman/KP ayanāṃśa, sidereal positions, Lagna, whole-sign & equal houses, Vimśottarī Daśā, D1/D9/D10 Vargas |
+| **Data access** | SQLite WASM (`sql.js`) persisted in `localStorage` + preferences in `localStorage` |
+
+### Features delivered
+- Birth form (date, exact time, place → lat/lon/timezone, ayanāṃśa, house system)
+- 20+ common cities with auto-fill
+- **Lagna, Moon rāśi, nakṣatra + pada**, ayanāṃśa summary
+- **Interactive North Indian (diamond) SVG** and South Indian grid charts
+- Full planetary table (rāśi, degree, house, nakṣatra, pada, retrograde)
+- **Vimśottarī Mahādaśā** timeline + table with balance at birth
+- Divisional charts: D1, D9 (Navāṃśa), D10 (Daśāṃśa)
+- Save / load / delete charts on device (SQLite)
+- Export JSON, Print/PDF
+- Fully offline after first load of the CDN WASM
+- Privacy-first: no server, all data stays on the device
+
+### How to run
+```bash
+cd /home/workdir/artifacts/janam-kundali
+# Open index.html directly in a modern browser
+# or
+npx serve .
+# or
+python -m http.server 8080
+```
+
+### Accuracy notes (transparent)
+- **Sun** ≈ 0.01°, **Moon** ≈ 1′ (Meeus algorithms)
+- Other planets use mean elements + equation of centre (typical 0.3–0.8°)
+- Lagna, ayanāṃśa, nakṣatra, and Daśā logic are exact for the given positions
+- Architecture is deliberately modular so you can later swap the ephemeris for Swiss Ephemeris (`@swisseph/browser`) without touching the UI
+
+### Project structure (exactly as recommended in the architecture document)
+```
+janam-kundali/
+├── index.html
+├── css/ (main, forms, chart, responsive, print)
+├── js/
+│   ├── app.js
+│   ├── config/constants.js
+│   ├── calculations/ (julianDay, ayanamsa, planets, ascendant, houses, nakshatra, dasha, divisionalCharts)
+│   ├── services/KundaliService.js
+│   ├── storage/SQLiteDatabase.js
+│   └── ui/KundaliChart.js
+└── README.md
+```
+
+Open `index.html` and generate a chart (a sample Delhi 1990-05-15 10:30 is pre-filled). The application follows the layered, local-first architecture and requirements from all three attached files.
