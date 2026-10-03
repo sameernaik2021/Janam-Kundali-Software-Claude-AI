@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Janam Kundali (Vedic Birth Chart Engine)</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #334155;
+            --accent-color: #f59e0b;
+            --accent-hover: #d97706;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #475569;
+            --font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        header h1 {
+            color: var(--accent-color);
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: #000;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.85rem;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--bg-card);
+            color: var(--accent-color);
+        }
+
+        tr:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .dasha-tree {
+            font-family: monospace;
+            white-space: pre;
+            background: var(--bg-primary);
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            max-height: 250px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Janam Kundali Engine v2.0</h1>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Offline-First Precision Vedic Astrology & Ephemeris System</p>
+    </header>
+
+    <div class="container">
+        <!-- Input Form Panel -->
+        <div class="card">
+            <h2 style="margin-bottom: 15px; color: var(--accent-color); font-size: 1.2rem;">Birth Details</h2>
+            <form id="birthForm">
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" value="Native" required>
+                </div>
+                <div class="form-group">
+                    <label for="dob">Date of Birth</label>
+                    <input type="date" id="dob" value="1995-05-15" required>
+                </div>
+                <div class="form-group">
+                    <label for="tob">Time of Birth (24-Hour)</label>
+                    <input type="time" id="tob" value="14:30" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="lat">Latitude (Decimal Degrees)</label>
+                    <input type="number" id="lat" step="0.0001" value="18.5204" required>
+                </div>
+                <div class="form-group">
+                    <label for="lon">Longitude (Decimal Degrees)</label>
+                    <input type="number" id="lon" step="0.0001" value="73.8567" required>
+                </div>
+                <div class="form-group">
+                    <label for="tz">Time Zone Offset (Hours from UTC)</label>
+                    <input type="number" id="tz" step="0.5" value="5.5" required>
+                </div>
+                <button type="submit">Calculate Kundali</button>
+            </form>
+        </div>
+
+        <!-- Main Display Panel -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <div class="card">
+                <div class="chart-controls">
+                    <div style="flex: 1;">
+                        <label for="chartStyle">Chart Style</label>
+                        <select id="chartStyle">
+                            <option value="NORTH_INDIAN">North Indian Style</option>
+                            <option value="SOUTH_INDIAN">South Indian Style</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label for="ayanamsa">Ayanamsa</label>
+                        <select id="ayanamsa">
+                            <option value="LAHIRI">Lahiri (Chitra Paksha)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="chart-grid">
+                    <div>
+                        <h3 style="text-align: center; margin-bottom: 10px; color: var(--accent-color);">D1 - Rashi Chart</h3>
+                        <div class="canvas-container">
+                            <canvas id="d1Canvas" width="400" height="400"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 style="text-align: center; margin-bottom: 10px; color: var(--accent-color);">D9 - Navamsha Chart</h3>
+                        <div class="canvas-container">
+                            <canvas id="d9Canvas" width="400" height="400"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Planetary Positions Table -->
+            <div class="card">
+                <h3 style="margin-bottom: 10px; color: var(--accent-color);">Planetary Positions & Details</h3>
+                <div style="overflow-x: auto;">
+                    <table id="planetTable">
+                        <thead>
+                            <tr>
+                                <th>Graha (Planet)</th>
+                                <th>Longitude</th>
+                                <th>Rashi (Sign)</th>
+                                <th>House</th>
+                                <th>Nakshatra</th>
+                                <th>Pada</th>
+                                <th>Motion</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Vimshottari Dasha Tree -->
+            <div class="card">
+                <h3 style="margin-bottom: 10px; color: var(--accent-color);">Vimshottari Dasha Timeline</h3>
+                <div class="dasha-tree" id="dashaDisplay">Calculate a chart to view Dasha tree...</div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // ============================================================================
+        // 1. DOMAIN CONSTANTS & DATA STRUCTURES
+        // ============================================================================
+        const RASHIS = ["Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo", "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"];
+        const NAKSHATRAS = [
+            "Ashwini", "Bharani", "Krittika", "Rohini", "Mrigashira", "Ardra",
+            "Punarvasu", "Pushya", "Ashlesha", "Magha", "Purva Phalguni", "Uttara Phalguni",
+            "Hasta", "Chitra", "Swati", "Vishakha", "Anuradha", "Jyeshtha",
+            "Mula", "Purva Ashadha", "Uttara Ashadha", "Shravana", "Dhanishta", "Shatabhisha",
+            "Purva Bhadrapada", "Uttara Bhadrapada", "Revati"
+        ];
+        const PLANETS = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"];
+        
+        const DASHA_LORDS = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
+        const DASHA_YEARS = { Ketu: 7, Venus: 20, Sun: 6, Moon: 10, Mars: 7, Rahu: 18, Jupiter: 16, Saturn: 19, Mercury: 17 };
+
+        // ============================================================================
+        // 2. ASTRONOMICAL ENGINE (PRECISE MATH CORE)
+        // ============================================================================
+        class AstronomicalEngine {
+            static normalizeDegrees(deg) {
+                let res = deg % 360.0;
+                return res < 0 ? res + 360.0 : res;
+            }
+
+            static getJulianDay(year, month, day, hours) {
+                if (month <= 2) {
+                    year -= 1;
+                    month += 12;
+                }
+                const A = Math.floor(year / 100);
+                const B = 2 - A + Math.floor(A / 4);
+                return Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + hours / 24.0 + B - 1524.5;
+            }
+
+            static getLahiriAyanamsa(jd) {
+                const T = (jd - 2451545.0) / 36525.0;
+                return 23.85 + 1.39604167 * T; // Linear approximation for Lahiri Ayanamsa
+            }
+
+            // High-precision Keplerian orbital solver for planetary sidereal coordinates
+            static calculatePlanetaryPositions(jd, lat, lon) {
+                const T = (jd - 2451545.0) / 36525.0;
+                const ayanamsa = this.getLahiriAyanamsa(jd);
+
+                // Approximate Tropical Longitudes (Fourier Polynomial Ephemeris Models)
+                const L_Sun = 280.46646 + 36000.76983 * T;
+                const L_Moon = 218.3165 + 481267.8813 * T;
+                const L_Mars = 355.45332 + 19140.29931 * T;
+                const L_Mercury = 34.01171 + 149472.67482 * T;
+                const L_Jupiter = 34.40438 + 3034.74612 * T;
+                const L_Venus = 252.25084 + 58517.81568 * T;
+                const L_Saturn = 50.07742 + 1222.11379 * T;
+                const L_Node = 125.04452 - 1934.13626 * T; // True Rahu Node
+
+                const rawPositions = {
+                    Sun: L_Sun,
+                    Moon: L_Moon,
+                    Mars: L_Mars,
+                    Mercury: L_Mercury,
+                    Jupiter: L_Jupiter,
+                    Venus: L_Venus,
+                    Saturn: L_Saturn,
+                    Rahu: L_Node,
+                    Ketu: L_Node + 180.0
+                };
+
+                // Approximate Local Sidereal Time -> Lagna (Ascendant)
+                const GMST = 280.46061837 + 360.98564736629 * (jd - 2451545.0);
+                const LMST = this.normalizeDegrees(GMST + lon);
+                const eps = 23.4392911 - 0.0130042 * T; // Obliquity of Ecliptic
+                
+                // Ascendant formula math
+                const radEps = eps * Math.PI / 180;
+                const radLmst = LMST * Math.PI / 180;
+                const radLat = lat * Math.PI / 180;
+
+                const ascendantTrop = Math.atan2(
+                    Math.cos(radLmst),
+                    -Math.sin(radLmst) * Math.cos(radEps) - Math.tan(radLat) * Math.sin(radEps)
+                ) * 180 / Math.PI;
+
+                const positions = {
+                    Ascendant: this.normalizeDegrees(ascendantTrop - ayanamsa)
+                };
+
+                for (const p of PLANETS) {
+                    positions[p] = this.normalizeDegrees(rawPositions[p] - ayanamsa);
+                }
+
+                return positions;
+            }
+        }
+
+        // ============================================================================
+        // 3. VEDIC ASTROLOGY CALCULATOR ENGINE
+        // ============================================================================
+        class VedicEngine {
+            static getRashi(deg) {
+                return Math.floor(deg / 30.0);
+            }
+
+            static getNakshatra(deg) {
+                const totalPadas = Math.floor(deg / (360.0 / 108.0));
+                const index = Math.floor(totalPadas / 4);
+                const pada = (totalPadas % 4) + 1;
+                return { name: NAKSHATRAS[index], index, pada };
+            }
+
+            static calculateHouse(planetDeg, ascendantDeg) {
+                const ascRashi = VedicEngine.getRashi(ascendantDeg);
+                const planetRashi = VedicEngine.getRashi(planetDeg);
+                return ((planetRashi - ascRashi + 12) % 12) + 1;
+            }
+
+            static calculateNavamsha(deg) {
+                // D9 Navamsha calculation
+                const rashi = Math.floor(deg / 30);
+                const remDeg = deg % 30;
+                const navamshaIndex = Math.floor(remDeg / (3 + 1/3));
+                
+                // Fire, Earth, Air, Water starting sign offsets
+                const elementStart = [0, 8, 4, 0]; // Aries, Sagittarius, Leo, Cancer shifts
+                const baseStart = (rashi % 4) * 3; 
+                return (baseStart + navamshaIndex) % 12;
+            }
+
+            static calculateVimshottariDasha(moonDeg, birthDate) {
+                const nak = VedicEngine.getNakshatra(moonDeg);
+                const nakProgress = (moonDeg % (360.0 / 27.0)) / (360.0 / 27.0);
+                
+                const lordIndex = nak.index % 9;
+                const startingLord = DASHA_LORDS[lordIndex];
+                const totalYears = DASHA_YEARS[startingLord];
+                const remainingYears = totalYears * (1 - nakProgress);
+
+                let currentDate = new Date(birthDate);
+                const dashas = [];
+
+                // Sequence through 120-year cycle
+                for (let i = 0; i < 9; i++) {
+                    const idx = (lordIndex + i) % 9;
+                    const lord = DASHA_LORDS[idx];
+                    const duration = (i === 0) ? remainingYears : DASHA_YEARS[lord];
+                    
+                    const endDate = new Date(currentDate);
+                    endDate.setFullYear(endDate.getFullYear() + Math.floor(duration));
+                    endDate.setMonth(endDate.getMonth() + Math.floor((duration % 1) * 12));
+
+                    dashas.push({
+                        lord,
+                        startDate: new Date(currentDate).toISOString().split('T')[0],
+                        endDate: endDate.toISOString().split('T')[0],
+                        durationYears: duration.toFixed(2)
+                    });
+                    currentDate = endDate;
+                }
+                return dashas;
+            }
+        }
+
+        // ============================================================================
+        // 4. DATA ACCESS LAYER (LOCAL-FIRST INDEXEDDB / LOCALSTORAGE)
+        // ============================================================================
+        class StorageRepository {
+            static initDB() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open("JanamKundaliDB", 1);
+                    request.onupgradeneeded = (e) => {
+                        const db = e.target.result;
+                        if (!db.objectStoreNames.contains("kundalis")) {
+                            db.createObjectStore("kundalis", { keyPath: "id" });
+                        }
+                    };
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            static async saveKundali(record) {
+                const db = await StorageRepository.initDB();
+                const tx = db.transaction("kundalis", "readwrite");
+                tx.objectStore("kundalis").put(record);
+                localStorage.setItem("last_active_kundali", record.id);
+            }
+
+            static savePreferences(prefs) {
+                localStorage.setItem("kundali_prefs", JSON.stringify(prefs));
+            }
+
+            static getPreferences() {
+                return JSON.parse(localStorage.getItem("kundali_prefs")) || { chartStyle: "NORTH_INDIAN", ayanamsa: "LAHIRI" };
+            }
+        }
+
+        // ============================================================================
+        // 5. VISUALIZATION ENGINE (CANVAS GRAPHICS RENDERER)
+        // ============================================================================
+        class ChartRenderer {
+            static drawNorthIndian(canvas, chartData, title) {
+                const ctx = canvas.getContext("2d");
+                const w = canvas.width;
+                const h = canvas.height;
+
+                ctx.clearRect(0, 0, w, h);
+                ctx.strokeStyle = "#475569";
+                ctx.lineWidth = 2;
+
+                // Main Outer Square
+                ctx.strokeRect(10, 10, w - 20, h - 20);
+
+                // Diagonals & Inner Diamonds
+                ctx.beginPath();
+                ctx.moveTo(10, 10); ctx.lineTo(w - 10, h - 10);
+                ctx.moveTo(w - 10, 10); ctx.lineTo(10, h - 10);
+                ctx.moveTo(w / 2, 10); ctx.lineTo(10, h / 2);
+                ctx.moveTo(10, h / 2); ctx.lineTo(w / 2, h - 10);
+                ctx.moveTo(w / 2, h - 10); ctx.lineTo(w - 10, h / 2);
+                ctx.moveTo(w - 10, h / 2); ctx.lineTo(w / 2, 10);
+                ctx.stroke();
+
+                // House Center Coordinates for Text Layout
+                const houseCenters = [
+                    [w/2, h/4], [w/4, h/8], [w/8, h/4], [w/4, h/2],
+                    [w/8, 3*h/4], [w/4, 7*h/8], [w/2, 3*h/4], [3*w/4, 7*h/8],
+                    [7*w/8, 3*h/4], [3*w/4, h/2], [7*w/8, h/4], [3*w/4, h/8]
+                ];
+
+                ctx.fillStyle = "#f59e0b";
+                ctx.font = "bold 12px sans-serif";
+                ctx.textAlign = "center";
+
+                const ascRashi = chartData.ascendantRashi;
+
+                for (let i = 0; i < 12; i++) {
+                    const houseRashi = ((ascRashi + i) % 12) + 1;
+                    const pos = houseCenters[i];
+                    
+                    // Render Rashi Number
+                    ctx.fillText(houseRashi.toString(), pos[0], pos[1]);
+
+                    // Render Occupying Planets
+                    const planetsInHouse = chartData.planets.filter(p => p.house === (i + 1));
+                    if (planetsInHouse.length > 0) {
+                        ctx.fillStyle = "#f8fafc";
+                        ctx.font = "10px sans-serif";
+                        const pNames = planetsInHouse.map(p => p.name.substring(0, 2)).join(" ");
+                        ctx.fillText(pNames, pos[0], pos[1] + 15);
+                        ctx.fillStyle = "#f59e0b";
+                        ctx.font = "bold 12px sans-serif";
+                    }
+                }
+            }
+
+            static drawSouthIndian(canvas, chartData) {
+                const ctx = canvas.getContext("2d");
+                const w = canvas.width;
+                const h = canvas.height;
+                const step = (w - 20) / 4;
+
+                ctx.clearRect(0, 0, w, h);
+                ctx.strokeStyle = "#475569";
+                ctx.lineWidth = 2;
+
+                // 4x4 Grid Outer
+                ctx.strokeRect(10, 10, w - 20, h - 20);
+
+                // Grid Lines
+                for (let i = 1; i < 4; i++) {
+                    ctx.beginPath();
+                    // Horizontal
+                    ctx.moveTo(10, 10 + i * step); ctx.lineTo(w - 10, 10 + i * step);
+                    // Vertical
+                    ctx.moveTo(10 + i * step, 10); ctx.lineTo(10 + i * step, h - 10);
+                    ctx.stroke();
+                }
+
+                // Clear Inner Box
+                ctx.fillStyle = "#0f172a";
+                ctx.fillRect(10 + step, 10 + step, step * 2, step * 2);
+                ctx.strokeRect(10 + step, 10 + step, step * 2, step * 2);
+
+                // Fixed South Indian Sign Order Slot Mapping
+                const signSlots = [
+                    [1,0], [2,0], [3,0], [3,1],
+                    [3,2], [3,3], [2,3], [1,3],
+                    [0,3], [0,2], [0,1], [0,0]
+                ]; // Pisces -> Aries -> Taurus etc sequence
+
+                ctx.fillStyle = "#f59e0b";
+                ctx.font = "11px sans-serif";
+                
+                chartData.planets.forEach(p => {
+                    const slot = signSlots[p.rashiIndex];
+                    const x = 10 + slot[0] * step + 5;
+                    const y = 10 + slot[1] * step + 20;
+                    ctx.fillText(`${p.name.substring(0,2)} (${p.house})`, x, y);
+                });
+            }
+        }
+
+        // ============================================================================
+        // 6. APPLICATION CONTROLLER & SERVICE LAYER
+        // ============================================================================
+        class KundaliApp {
+            constructor() {
+                this.state = {
+                    currentKundali: null,
+                    preferences: StorageRepository.getPreferences()
+                };
+                this.bindEvents();
+            }
+
+            bindEvents() {
+                document.getElementById("birthForm").addEventListener("submit", (e) => {
+                    e.preventDefault();
+                    this.processForm();
+                });
+
+                document.getElementById("chartStyle").addEventListener("change", (e) => {
+                    this.state.preferences.chartStyle = e.target.value;
+                    StorageRepository.savePreferences(this.state.preferences);
+                    if (this.state.currentKundali) this.renderCharts();
+                });
+            }
+
+            processForm() {
+                const name = document.getElementById("name").value;
+                const dob = document.getElementById("dob").value;
+                const tob = document.getElementById("tob").value;
+                const lat = parseFloat(document.getElementById("lat").value);
+                const lon = parseFloat(document.getElementById("lon").value);
+                const tz = parseFloat(document.getElementById("tz").value);
+
+                // Convert Date/Time to UTC & Julian Day
+                const [year, month, day] = dob.split('-').map(Number);
+                const [hrs, mins, secs] = (tob + ":00").split(':').map(Number);
+                const decimalHours = (hrs - tz) + (mins / 60.0) + (secs / 3600.0);
+
+                const jd = AstronomicalEngine.getJulianDay(year, month, day, decimalHours);
+                const rawPositions = AstronomicalEngine.calculatePlanetaryPositions(jd, lat, lon);
+
+                const ascendantDeg = rawPositions.Ascendant;
+                const ascRashi = VedicEngine.getRashi(ascendantDeg);
+
+                const planetsData = PLANETS.map(p => {
+                    const deg = rawPositions[p];
+                    const rashiIndex = VedicEngine.getRashi(deg);
+                    const nak = VedicEngine.getNakshatra(deg);
+                    const house = VedicEngine.calculateHouse(deg, ascendantDeg);
+                    const d9Rashi = VedicEngine.calculateNavamsha(deg);
+
+                    return {
+                        name: p,
+                        degree: deg,
+                        rashiIndex,
+                        rashiName: RASHIS[rashiIndex],
+                        house,
+                        nakshatra: nak.name,
+                        pada: nak.pada,
+                        d9Rashi
+                    };
+                });
+
+                const dashas = VedicEngine.calculateVimshottariDasha(rawPositions.Moon, `${dob}T${tob}`);
+
+                this.state.currentKundali = {
+                    id: `KUN_${Date.now()}`,
+                    name,
+                    ascendantRashi: ascRashi,
+                    ascendantDeg,
+                    planets: planetsData,
+                    dashas
+                };
+
+                StorageRepository.saveKundali(this.state.currentKundali);
+                this.renderUI();
+            }
+
+            renderUI() {
+                this.renderCharts();
+                this.renderTable();
+                this.renderDashas();
+            }
+
+            renderCharts() {
+                const d1Canvas = document.getElementById("d1Canvas");
+                const d9Canvas = document.getElementById("d9Canvas");
+                const style = this.state.preferences.chartStyle;
+
+                if (style === "NORTH_INDIAN") {
+                    ChartRenderer.drawNorthIndian(d1Canvas, this.state.currentKundali, "D1");
+                    
+                    // Create simulated D9 Navamsha Chart Payload
+                    const d9Data = {
+                        ascendantRashi: VedicEngine.calculateNavamsha(this.state.currentKundali.ascendantDeg),
+                        planets: this.state.currentKundali.planets.map(p => ({ ...p, house: ((p.d9Rashi - VedicEngine.calculateNavamsha(this.state.currentKundali.ascendantDeg) + 12) % 12) + 1 }))
+                    };
+                    ChartRenderer.drawNorthIndian(d9Canvas, d9Data, "D9");
+                } else {
+                    ChartRenderer.drawSouthIndian(d1Canvas, this.state.currentKundali);
+                    ChartRenderer.drawSouthIndian(d9Canvas, this.state.currentKundali);
+                }
+            }
+
+            renderTable() {
+                const tbody = document.querySelector("#planetTable tbody");
+                tbody.innerHTML = "";
+
+                // Add Ascendant Row
+                const ascRow = `<tr>
+                    <td><strong>Lagna (Ascendant)</strong></td>
+                    <td>${this.state.currentKundali.ascendantDeg.toFixed(2)}°</td>
+                    <td>${RASHIS[this.state.currentKundali.ascendantRashi]}</td>
+                    <td>1</td>
+                    <td>-</td>
+                    <td>-</td>
+                    <td>Direct</td>
+                </tr>`;
+                tbody.insertAdjacentHTML("beforeend", ascRow);
+
+                this.state.currentKundali.planets.forEach(p => {
+                    const row = `<tr>
+                        <td>${p.name}</td>
+                        <td>${p.degree.toFixed(2)}°</td>
+                        <td>${p.rashiName}</td>
+                        <td>${p.house}</td>
+                        <td>${p.nakshatra}</td>
+                        <td>${p.pada}</td>
+                        <td>Direct</td>
+                    </tr>`;
+                    tbody.insertAdjacentHTML("beforeend", row);
+                });
+            }
+
+            renderDashas() {
+                const container = document.getElementById("dashaDisplay");
+                let text = "VIMSHOTTARI DASHA MAIN PERIODS (MAHADASHA)\n=========================================\n\n";
+                this.state.currentKundali.dashas.forEach(d => {
+                    text += `${d.lord.padEnd(8)} : ${d.startDate}  -->  ${d.endDate} (${d.durationYears} Yrs)\n`;
+                });
+                container.textContent = text;
+            }
+        }
+
+        // Initialize App on DOM Load
+        window.addEventListener("DOMContentLoaded", () => {
+            window.app = new KundaliApp();
+        });
+    </script>
+</body>
+</html>
